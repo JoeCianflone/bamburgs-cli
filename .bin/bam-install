@@ -1,0 +1,106 @@
+#!/usr/bin/env node
+
+const program  = require('commander');
+const shell    = require('shelljs');
+const crypto   = require('crypto');
+const readline = require('readline');
+const download = require('download-git-repo');
+const fs       = require('fs-extra');
+
+program
+  .option('-b, --build', 'Run npm install and build')
+  .parse(process.argv);
+
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
+
+console.log();
+console.log('Welcome to Bamburgs...let\'s get you all set up ok?' )
+
+rl.question('Name Your Project (package.json name): ', (name) => {
+   console.log();
+   rl.question('Distribution folder path (relative this this directory): ', (dist) => {
+      console.log();
+      rl.question('Src folder path (relative this this directory): ', (src) => {
+         console.log();
+         rl.question('Description: ', (description) => {
+            console.log();
+            rl.question('Your Name: ', (author) => {
+               console.log();
+               rl.question('Your Email: ', (email) => {
+                  console.log();
+                  setupFiles(name, dist, src, description, author, email);
+
+                  rl.close();
+               });
+            });
+         });
+      });
+   });
+});
+
+function setupFiles(name, dist, src, description, author, email) {
+   let hash = crypto.createHash('md5').update(name).digest('hex');
+   let location = `${process.cwd()}/${hash}`;
+
+   download('mettleshop/bamburgs', location, (err) => {
+      let package = location + '/package.template';
+      let gitignore = location + '/gitignore.template';
+
+      if (err) {
+         console.log(err);
+         process.exit(0);
+      }
+
+      fs.readFile(package,'utf8', (err, data) => {
+         let result = data
+                        .replace('{{name}}', name)
+                        .replace('{{author}}', author)
+                        .replace('{{description}}', description)
+                        .replace('{{dist}}', dist)
+                        .replace('{{src}}', src)
+                        .replace('{{email}}', email);
+
+         fs.writeFile(process.cwd() + '/package.json', result, 'utf8', function (err) {
+            if (err) return console.log(err);
+         });
+      });
+
+      fs.readFile(gitignore, 'utf8', (err, data) => {
+         let result = data.replace('{{dist}}', dist);
+
+         fs.writeFile(process.cwd() + '/.gitignore', result, 'utf8', function (err) {
+            if (err) return console.log(err);
+         });
+      });
+
+      fs.copy(location+"/postcss.config.js", process.cwd()+"/postcss.config.js", (err) => {
+         fs.copy(location+"/.sass-lint.yml", process.cwd()+"/.sass-lint.yml", (err) => {
+            fs.copy(location+"/.editorconfig", process.cwd()+"/.editorconfig", (err) => {
+               fs.copy(location+"/.babelrc", process.cwd()+"/.babelrc", (err) => {
+                  fs.copy(location+"/src", process.cwd()+"/"+src, (err) => {
+                     fs.remove(location);
+
+                     if (program.build) {
+                        console.log('running NPM Install...');
+                        shell.exec('npm install');
+                        console.log();
+                        console.log('Building...');
+                        shell.exec('npm run build');
+                     }
+
+                     console.log('Ready to Go!')
+                  });
+               });
+            });
+         });
+      });
+
+
+
+
+
+   });
+}
