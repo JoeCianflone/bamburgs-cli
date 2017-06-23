@@ -15,22 +15,27 @@ const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
 });
+console.log('\n**********************************************');
+console.log('Welcome to Bamburgs...let\'s get you all set up ok!' );
+console.log('We need to build up your package.json file so we\'re');
+console.log('to ask you some questions.')
+console.log('**********************************************\n');
 
-console.log();
-console.log('Welcome to Bamburgs...let\'s get you all set up ok?' )
-
-rl.question('Name Your Project (package.json name): ', (name) => {
-   console.log();
-   rl.question('Distribution folder path (relative this this directory): ', (dist) => {
-      console.log();
-      rl.question('Src folder path (relative this this directory): ', (src) => {
-         console.log();
-         rl.question('Description: ', (description) => {
-            console.log();
-            rl.question('Your Name: ', (author) => {
-               console.log();
-               rl.question('Your Email: ', (email) => {
-                  console.log();
+rl.question('What\'s your project name? ', (name) => {
+   if (!name) {
+      console.log('Sorry we need a name');
+      process.exit(0);
+   }
+   rl.question('\nWhere do you want the compiled files to go? (dist/assets)', (dist) => {
+      dist = !dist ? 'dist/assets' : dist;
+      rl.question('\nWhere do you want your source files to live? (src) ', (src) => {
+         src = !src ? 'src' : src;
+         rl.question('\nDescription: ', (description) => {
+            description = !description ? 'I like turdles' : description;
+            rl.question('\nYour Name: ', (author) => {
+               author = !author ? 'Namey McNameFace' : author;
+               rl.question('\nYour Email: ', (email) => {
+                  email = !email ? '' : email;
                   setupFiles(name, dist, src, description, author, email);
 
                   rl.close();
@@ -97,10 +102,5 @@ function setupFiles(name, dist, src, description, author, email) {
             });
          });
       });
-
-
-
-
-
    });
 }
