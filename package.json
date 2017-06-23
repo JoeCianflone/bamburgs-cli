@@ -2,10 +2,15 @@
   "name": "bamburgs-cli",
   "version": "0.0.1",
   "description": "the CLI tool to install Bamburgs",
+  "repository": {
+     "url": "https://github.com/mettleshop/bamburgs-cli",
+     "type": "git"
+  },
+  "preferGlobal": true,
   "main": "index.js",
   "bin": {
     "bam": "./.bin/bam",
-    "bam-init": "./.bin/bam-init"
+    "bam-install": "./.bin/bam-install"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
