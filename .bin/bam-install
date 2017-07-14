@@ -3,7 +3,7 @@
 const program  = require('commander');
 const shell    = require('shelljs');
 const crypto   = require('crypto');
-const readline = require('readline');
+const prompt = require('prompt');
 const download = require('download-git-repo');
 const fs       = require('fs-extra');
 
@@ -11,96 +11,119 @@ program
   .option('-b, --build', 'Run npm install and build')
   .parse(process.argv);
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
-});
+let copy = {
+   files: [
+      '/postcss.config.js',
+      '/.sass-lint.yml',
+      '/.editorconfig',
+      '/robots.txt',
+      '/.babelrc'
+   ]
+}
+
+
 console.log('\n**********************************************');
 console.log('Welcome to Bamburgs...let\'s get you all set up ok!' );
 console.log('We need to build up your package.json file so we\'re');
 console.log('to ask you some questions.')
 console.log('**********************************************\n');
 
-rl.question('What\'s your project name? ', (name) => {
-   if (!name) {
-      console.log('Sorry we need a name');
-      process.exit(0);
+prompt.message = '';
+prompt.delimiter = ': ';
+
+prompt.start();
+
+let schema = {
+   properties: {
+      name: {
+         pattern: /^[a-zA-Z0-9\-]+$/,
+         message: 'Name must be only letters, numbers, or dashes',
+         description: "What's your projects name?",
+         required: true
+      },
+      description: {
+         type: 'string',
+         description: "Give us the tweet-size description of your project"
+      },
+      author: {
+         type: 'string',
+         description: "What's your name?"
+      },
+      email: {
+         type: 'string',
+         description: "What's your email?"
+      },
+      dist: {
+         description: "Where's your output folder?",
+         default: 'dist/assets',
+         type: 'string'
+      },
+      src: {
+         description: "Where will your source files live?",
+         default: 'src',
+         type: 'string'
+      },
+      compiler: {
+         type: 'string',
+         description: "(Y)arn or (N)PM?",
+         pattern: /(Y|y)[arn]*|(n|N)[pm]?/,
+         default: 'n',
+      }
    }
-   rl.question('\nWhere do you want the compiled files to go? (dist/assets)', (dist) => {
-      dist = !dist ? 'dist/assets' : dist;
-      rl.question('\nWhere do you want your source files to live? (src) ', (src) => {
-         src = !src ? 'src' : src;
-         rl.question('\nDescription: ', (description) => {
-            description = !description ? 'I like turdles' : description;
-            rl.question('\nYour Name: ', (author) => {
-               author = !author ? 'Namey McNameFace' : author;
-               rl.question('\nYour Email: ', (email) => {
-                  email = !email ? '' : email;
-                  setupFiles(name, dist, src, description, author, email);
+};
 
-                  rl.close();
-               });
-            });
-         });
-      });
-   });
-});
-
-function setupFiles(name, dist, src, description, author, email) {
-   let hash = crypto.createHash('md5').update(name).digest('hex');
+prompt.get(schema, (err, results) => {
+   let hash = crypto.createHash('md5').update(results.name).digest('hex');
    let location = `${process.cwd()}/${hash}`;
 
    download('mettleshop/bamburgs', location, (err) => {
-      let package = location + '/package.template';
-      let gitignore = location + '/gitignore.template';
-
       if (err) {
          console.log(err);
          process.exit(0);
       }
 
-      fs.readFile(package,'utf8', (err, data) => {
-         let result = data
-                        .replace('{{name}}', name)
-                        .replace('{{author}}', author)
-                        .replace('{{description}}', description)
-                        .replace('{{dist}}', dist)
-                        .replace('{{src}}', src)
-                        .replace('{{email}}', email);
+      let package = `${location}/package.template`;
+      let gitignore = `${location}/gitignore.template`;
 
-         fs.writeFile(process.cwd() + '/package.json', result, 'utf8', function (err) {
-            if (err) return console.log(err);
-         });
+      fs.readFile(package,'utf8', (err, data) => {
+         let updatedFile = data.replace('{{name}}', results.name)
+                               .replace('{{author}}', results.author)
+                               .replace('{{description}}', results.description)
+                               .replace('{{dist}}', results.dist)
+                               .replace('{{src}}', results.src)
+                               .replace('{{email}}', results.email);
+
+         fs.writeFile(`${process.cwd()}/package.json`, updatedFile, 'utf8', (err) => err ? console.log(err) : 'Done');
       });
 
       fs.readFile(gitignore, 'utf8', (err, data) => {
-         let result = data.replace('{{dist}}', dist);
+         let updatedFile = data.replace('{{dist}}', results.dist);
 
-         fs.writeFile(process.cwd() + '/.gitignore', result, 'utf8', function (err) {
-            if (err) return console.log(err);
-         });
+         fs.writeFile(`${process.cwd()}/.gitignore`, updatedFile, 'utf8', (err) => err ? console.log(err) : 'Done');
       });
 
-      fs.copy(location+"/postcss.config.js", process.cwd()+"/postcss.config.js", (err) => {
-         fs.copy(location+"/.sass-lint.yml", process.cwd()+"/.sass-lint.yml", (err) => {
-            fs.copy(location+"/.editorconfig", process.cwd()+"/.editorconfig", (err) => {
-               fs.copy(location+"/.babelrc", process.cwd()+"/.babelrc", (err) => {
-                  fs.copy(location+"/src", process.cwd()+"/"+src, (err) => {
-                     fs.remove(location);
-
-                     if (program.build) {
-                        console.log('running NPM Install...');
-                        shell.exec('npm install');
-                        console.log();
-                        console.log('Building...');
-                        shell.exec('npm run build');
-                     }
-
-                     console.log('Ready to Go!')
-                  });
-               });
-            });
-         });
+      copy.files.forEach((file) => {
+         fs.copy(`${location}${file}`, `${process.cwd()}${file}`)
+            .then((result) => console.log(`Copying: ${file}`))
+            .catch((err) => console.log(`Unable to copy: ${file}`));
       });
+
+      fs.copy(`${location}/src`, `${process.cwd()}/${results.src}`)
+         .then(() => {
+            console.log(`Copying src files and folders to ${results.src}`);
+            fs.remove(location);
+         })
+         .then(() => {
+            if (program.build) {
+               console.log("Installing Dependencies, this takes a bit...\n\n");
+               let builder = results.compiler.toLowerCase() === 'y' ? 'yarn' : 'npm';
+
+               shell.exec(`${builder} install`);
+               console.log('Building...\n');
+               shell.exec(`${builder} run build`);
+               console.log('Build Complete\n');
+            }
+         })
+         .catch(err => console.log(`Unable to copy ${location}/src to ${process.cwd()}/${results.src}`));
    });
-}
+});
