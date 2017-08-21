@@ -21,7 +21,6 @@ let copy = {
    ]
 }
 
-
 console.log('\n**********************************************');
 console.log('Welcome to Bamburgs...let\'s get you all set up ok!' );
 console.log('We need to build up your package.json file so we\'re');

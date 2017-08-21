@@ -1,0 +1,44 @@
+#!/usr/bin/env node
+
+const program  = require('commander');
+const shell    = require('shelljs');
+const fs       = require('fs-extra');
+const jsdiff     = require('diff');
+require('colors');
+
+program
+  .option('-f, --force', 'Force an update and to hell with the carnage')
+  .option('-s, --safe', 'Walk through each file for the update')
+  .option('-b, --build', 'Run a build after the update is done')
+  .parse(process.argv);
+
+let copy = {
+   files: [
+      '/postcss.config.js',
+      '/.sass-lint.yml',
+      '/.editorconfig',
+      '/robots.txt',
+      '/.babelrc'
+   ]
+}
+
+// fs.exists('package-lock.json').then(result => {
+//    let type = result ? 'npm update' : 'yarn update';
+//    shell.exec(type);
+// });
+
+let oldfile = fs.readFileSync('./.sass-lint.yml', 'utf-8');
+let newfile = fs.readFileSync('node_modules/bamburgs/.sass-lint.yml', 'utf-8');
+
+// console.log(newfile);
+var patch = jsdiff.diffLines(oldfile, newfile);
+jsdiff.createPatch('./.sass-lint.yml', newfile, oldfile);
+// jsdiff.applyPatch(oldfile, './.sass-lint.yml');
+
+// patch.forEach(function(part){
+//   // green for additions, red for deletions
+//   // grey for common parts
+//   var color = part.added ? 'green' :
+//     part.removed ? 'red' : 'grey';
+//   process.stderr.write(part.value[color]);
+// });
