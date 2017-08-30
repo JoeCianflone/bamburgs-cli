@@ -7,10 +7,10 @@ const jsdiff     = require('diff');
 require('colors');
 
 program
-  .option('-f, --force', 'Force an update and to hell with the carnage')
-  .option('-s, --safe', 'Walk through each file for the update')
-  .option('-b, --build', 'Run a build after the update is done')
-  .parse(process.argv);
+   .option('-f, --force', 'Force an update and to hell with the carnage')
+   .option('-s, --safe', 'Walk through each file for the update')
+   .option('-b, --build', 'Run a build after the update is done')
+   .parse(process.argv);
 
 let copy = {
    files: [

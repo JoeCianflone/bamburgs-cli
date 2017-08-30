@@ -8,8 +8,9 @@ const download = require('download-git-repo');
 const fs       = require('fs-extra');
 
 program
-  .option('-b, --build', 'Run npm install and build')
-  .parse(process.argv);
+.option('-b, --build', 'Run {npm|yarn} install and build')
+.option('-f, --fresh', 'Will delete any existing files and totally overwrite folders')
+.parse(process.argv);
 
 let copy = {
    files: [
@@ -75,7 +76,7 @@ prompt.get(schema, (err, results) => {
    let hash = crypto.createHash('md5').update(results.name).digest('hex');
    let location = `${process.cwd()}/${hash}`;
 
-   download('mettleshop/bamburgs', location, (err) => {
+   download('joecianflone/bamburgs', location, (err) => {
       if (err) {
          console.log(err);
          process.exit(0);
@@ -103,26 +104,26 @@ prompt.get(schema, (err, results) => {
 
       copy.files.forEach((file) => {
          fs.copy(`${location}${file}`, `${process.cwd()}${file}`)
-            .then((result) => console.log(`Copying: ${file}`))
-            .catch((err) => console.log(`Unable to copy: ${file}`));
+           .then((result) => console.log(`Copying: ${file}`))
+           .catch((err) => console.log(`Unable to copy: ${file}`));
       });
 
       fs.copy(`${location}/src`, `${process.cwd()}/${results.src}`)
-         .then(() => {
-            console.log(`Copying src files and folders to ${results.src}`);
-            fs.remove(location);
-         })
-         .then(() => {
-            if (program.build) {
-               console.log("Installing Dependencies, this takes a bit...\n\n");
-               let builder = results.compiler.toLowerCase() === 'y' ? 'yarn' : 'npm';
+        .then(() => {
+           console.log(`Copying src files and folders to ${results.src}`);
+           fs.remove(location);
+        })
+       .then(() => {
+           if (program.build) {
+              console.log("Installing Dependencies, this takes a bit...\n\n");
+              let builder = results.compiler.toLowerCase() === 'y' ? 'yarn' : 'npm';
 
-               shell.exec(`${builder} install`);
-               console.log('Building...\n');
-               shell.exec(`${builder} run build`);
-               console.log('Build Complete\n');
-            }
-         })
-         .catch(err => console.log(`Unable to copy ${location}/src to ${process.cwd()}/${results.src}`));
+              shell.exec(`${builder} install`);
+              console.log('Building...\n');
+              shell.exec(`${builder} run build`);
+              console.log('Build Complete\n');
+           }
+        })
+        .catch(err => console.log(`Unable to copy ${location}/src to ${process.cwd()}/${results.src}`));
    });
 });
