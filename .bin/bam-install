@@ -1,24 +1,26 @@
 #!/usr/bin/env node
 
 const program  = require('commander');
-const shell    = require('shelljs');
 const crypto   = require('crypto');
 const prompt = require('prompt');
 const download = require('download-git-repo');
 const fs       = require('fs-extra');
+const Builder  = require('../src/Builder.js');
 
 program
-.option('-b, --build', 'Run {npm|yarn} install and build')
-.option('-f, --fresh', 'Will delete any existing files and totally overwrite folders')
-.parse(process.argv);
+   .option('-b, --build', 'Run {npm|yarn} install and build')
+   .option('-f, --fresh', 'Will delete any existing files and totally overwrite folders')
+   .parse(process.argv);
 
 let copy = {
-   files: [
-      '/postcss.config.js',
+   rootFiles: [
+      'postcss.config.js',
       '/.sass-lint.yml',
       '/.editorconfig',
-      '/robots.txt',
       '/.babelrc'
+   ],
+   publicFiles: [
+      '/robots.txt',
    ]
 }
 
@@ -37,7 +39,7 @@ let schema = {
    properties: {
       name: {
          pattern: /^[a-zA-Z0-9\-]+$/,
-         message: 'Name must be only letters, numbers, or dashes',
+         message: 'Name must be only letters (lowercase), numbers, or dashes',
          description: "What's your projects name?",
          required: true
       },
@@ -68,62 +70,64 @@ let schema = {
          description: "(Y)arn or (N)PM?",
          pattern: /(Y|y)[arn]*|(n|N)[pm]?/,
          default: 'n',
+      },
+      js: {
+         type: 'string',
+         description: 'JS Framework: (V)ue, (J)Query or (N)one?',
+         pattern: /(V|v)[ue]*|(R|r)[eact]*|(J|j)[query]*|(N|n)[one]*?/,
+         default: 'v',
       }
    }
 };
 
-prompt.get(schema, (err, results) => {
-   let hash = crypto.createHash('md5').update(results.name).digest('hex');
-   let location = `${process.cwd()}/${hash}`;
 
-   download('joecianflone/bamburgs', location, (err) => {
+prompt.get(schema, (err, results) => {
+   let build = new Builder(results);
+   build.setLocation(process.cwd())
+        .setHash(crypto.createHash('md5').update(results.name).digest('hex'))
+        .setFiles({
+           root: [
+              'postcss.config.js',
+              '.sass-lint.yml',
+              '.editorconfig',
+              '.babelrc'
+           ],
+           dist: [
+              'robots.txt',
+           ],
+        })
+        .setTemplates({
+           package: 'package.json',
+           gitignore: '.gitignore',
+           html: 'template.html'
+        });
+
+   if (program.fresh) {
+      build.removeFiles(fs);
+   }
+
+   download('joecianflone/bamburgs', build.getDownloadPath(), (err) => {
       if (err) {
          console.log(err);
          process.exit(0);
       }
 
-      let package = `${location}/package.template`;
-      let gitignore = `${location}/gitignore.template`;
+      build.generateFilesFromTemplates(fs);
 
-      fs.readFile(package,'utf8', (err, data) => {
-         let updatedFile = data.replace('{{name}}', results.name)
-                               .replace('{{author}}', results.author)
-                               .replace('{{description}}', results.description)
-                               .replace('{{dist}}', results.dist)
-                               .replace('{{src}}', results.src)
-                               .replace('{{email}}', results.email);
+      build.copyFiles(fs);
 
-         fs.writeFile(`${process.cwd()}/package.json`, updatedFile, 'utf8', (err) => err ? console.log(err) : 'Done');
-      });
-
-      fs.readFile(gitignore, 'utf8', (err, data) => {
-         let updatedFile = data.replace('{{dist}}', results.dist);
-
-         fs.writeFile(`${process.cwd()}/.gitignore`, updatedFile, 'utf8', (err) => err ? console.log(err) : 'Done');
-      });
-
-      copy.files.forEach((file) => {
-         fs.copy(`${location}${file}`, `${process.cwd()}${file}`)
-           .then((result) => console.log(`Copying: ${file}`))
-           .catch((err) => console.log(`Unable to copy: ${file}`));
-      });
-
-      fs.copy(`${location}/src`, `${process.cwd()}/${results.src}`)
-        .then(() => {
-           console.log(`Copying src files and folders to ${results.src}`);
-           fs.remove(location);
-        })
-       .then(() => {
-           if (program.build) {
-              console.log("Installing Dependencies, this takes a bit...\n\n");
-              let builder = results.compiler.toLowerCase() === 'y' ? 'yarn' : 'npm';
-
-              shell.exec(`${builder} install`);
-              console.log('Building...\n');
-              shell.exec(`${builder} run build`);
-              console.log('Build Complete\n');
-           }
-        })
-        .catch(err => console.log(`Unable to copy ${location}/src to ${process.cwd()}/${results.src}`));
+      build.copySrcFile(fs)
+            .then(() => {
+               build.removeHashFolder(fs);
+            })
+            .then(() => {
+               if (program.build) {
+                  build.compileAssetsFirstTime(fs);
+               }
+            })
+            .then(() => {
+               console.log('Bamburgs is ready to go\n');
+            })
+            .catch(err => console.log('Unable to copy SRC files to new location'));
    });
 });

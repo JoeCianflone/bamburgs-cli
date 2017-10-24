@@ -1,9 +1,9 @@
 {
   "name": "bamburgs-cli",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "the CLI tool to install Bamburgs",
   "repository": {
-    "url": "https://github.com/mettleshop/bamburgs-cli",
+    "url": "https://github.com/joecianflone/bamburgs-cli",
     "type": "git"
   },
   "preferGlobal": true,
